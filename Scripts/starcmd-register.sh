@@ -9,8 +9,10 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id')
 CWD=$(echo "$INPUT" | jq -r '.cwd')
 SOURCE=$(echo "$INPUT" | jq -r '.source')
 
-# Detect tmux context
-if [ -n "$TMUX" ]; then
+# Detect tmux context - prefer env var set by wrapper to avoid race condition
+if [ -n "$STARCMD_TMUX_CONTEXT" ]; then
+  TMUX_CONTEXT="$STARCMD_TMUX_CONTEXT"
+elif [ -n "$TMUX" ]; then
   TMUX_SESSION=$(/opt/homebrew/bin/tmux display-message -p '#S')
   TMUX_WINDOW=$(/opt/homebrew/bin/tmux display-message -p '#W')
   TMUX_WINDOW_ID=$(/opt/homebrew/bin/tmux display-message -p '#{window_id}')

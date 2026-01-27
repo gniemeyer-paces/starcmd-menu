@@ -1,6 +1,10 @@
 import SwiftUI
 import StarCmdCore
 
+// Change this to try different icon styles:
+// .solid, .stacked, .stackedFading, .cascade, .dual
+let currentIconStyle: IconStyle = .dual
+
 @main
 struct StarCmdApp: App {
     @StateObject private var appState = AppState()
@@ -9,13 +13,54 @@ struct StarCmdApp: App {
         MenuBarExtra {
             MenuBarView(appState: appState)
         } label: {
-            HStack(spacing: 4) {
-                StatusIcon(status: appState.aggregateStatus)
-                Text("SC")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-            }
+            MenuBarIcon(status: appState.aggregateStatus)
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+struct MenuBarIcon: View {
+    let status: SessionStatus
+
+    var body: some View {
+        Image(nsImage: combinedIcon)
+    }
+
+    private var combinedIcon: NSImage {
+        let claudeIcon = IconGenerator.generateMenuBarIcon(style: currentIconStyle)
+        let statusIcon = NSImage(systemSymbolName: statusSymbol, accessibilityDescription: nil)!
+
+        let spacing: CGFloat = 0
+        let statusSize: CGFloat = 18
+        let totalWidth = statusSize + spacing + claudeIcon.size.width
+        let height = max(claudeIcon.size.height, statusSize)
+
+        let result = NSImage(size: NSSize(width: totalWidth, height: height))
+        result.lockFocus()
+
+        // Draw status icon on left
+        let config = NSImage.SymbolConfiguration(pointSize: statusSize, weight: .medium)
+        if let configuredStatus = statusIcon.withSymbolConfiguration(config) {
+            configuredStatus.draw(in: NSRect(x: 0,
+                                              y: (height - statusSize) / 2,
+                                              width: statusSize, height: statusSize))
+        }
+
+        // Draw Claude icon on right
+        claudeIcon.draw(in: NSRect(x: statusSize + spacing, y: (height - claudeIcon.size.height) / 2,
+                                    width: claudeIcon.size.width, height: claudeIcon.size.height))
+
+        result.unlockFocus()
+        result.isTemplate = true
+        return result
+    }
+
+    private var statusSymbol: String {
+        switch status {
+        case .working: return "checkmark.circle"
+        case .idle: return "ellipsis.circle"
+        case .blocked: return "exclamationmark.triangle"
+        }
     }
 }
 

@@ -12,8 +12,10 @@ MESSAGE=$(echo "$INPUT" | jq -r '.message')
 NOTIFICATION_TYPE=$(echo "$INPUT" | jq -r '.notification_type')
 TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path')
 
-# Detect tmux context (in case of reconnection)
-if [ -n "$TMUX" ]; then
+# Detect tmux context - prefer env var set by wrapper
+if [ -n "$STARCMD_TMUX_CONTEXT" ]; then
+  TMUX_CONTEXT="$STARCMD_TMUX_CONTEXT"
+elif [ -n "$TMUX" ]; then
   TMUX_SESSION=$(/opt/homebrew/bin/tmux display-message -p '#S')
   TMUX_WINDOW=$(/opt/homebrew/bin/tmux display-message -p '#W')
   TMUX_WINDOW_ID=$(/opt/homebrew/bin/tmux display-message -p '#{window_id}')
