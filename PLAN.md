@@ -44,16 +44,22 @@ StarCmd provides a centralized view of all active Claude Code sessions running i
 - Click-to-focus: activate Ghostty and select tmux pane
 
 **Status Indicators:**
-| Icon | Color  | Meaning                                      |
-|------|--------|----------------------------------------------|
-| ●    | Green  | Session active, working normally             |
-| ◐    | Yellow | Needs attention (idle 60s+, waiting for input) |
-| ●    | Red    | Blocked (permission prompt, requires action) |
+| Icon | Color           | Meaning                                      |
+|------|-----------------|----------------------------------------------|
+| ●    | Green           | Session active, working normally             |
+| ◐    | Anthropic Orange| Needs attention (idle 60s+, waiting for input) |
+| ●    | Red             | Blocked (permission prompt, requires action) |
 
-**Visual Effects:**
-- Red/Yellow states trigger a subtle glow or pulse animation on the menu bar icon
-- Uses `NSStatusBarButton` with `CABasicAnimation` for pulsing effect
-- Glow fades in/out on a 2-second cycle to draw attention without being annoying
+**Menu Bar Icon:**
+macOS renders menu bar icons as **template images** (monochrome) by default. Colored icons require `NSImage.isTemplate = false` but look out of place. Instead, we use **distinct SF Symbols** per state:
+
+| State   | SF Symbol                    | Appearance |
+|---------|------------------------------|------------|
+| Working | `checkmark.circle`           | ✓ in circle |
+| Idle    | `ellipsis.circle`            | ... in circle |
+| Blocked | `exclamationmark.triangle`   | ⚠ warning |
+
+This follows macOS design conventions while providing clear visual distinction.
 
 **Menu Structure:**
 ```
@@ -434,21 +440,23 @@ starcmd/
 
 ## Implementation Phases
 
-### Phase 1: Core Infrastructure
-- [ ] Unix domain socket server in Swift
-- [ ] Basic menu bar app with hardcoded test data
-- [ ] Hook scripts that write to socket
+### Phase 1: Core Infrastructure ✅
+- [x] Unix domain socket server in Swift
+- [x] Basic menu bar app with hardcoded test data
+- [x] Hook scripts that write to socket
+- [x] IPC message parsing (register, notify, clear, deregister)
+- [x] SessionManager with full state management
 
-### Phase 2: Session Management
-- [ ] Session registration/deregistration
-- [ ] Real-time status updates
-- [ ] Notification storage and display
+### Phase 2: Live Integration
+- [ ] Remove hardcoded test data
+- [ ] Update menu bar icon to use SF Symbols (not colors)
+- [ ] Install hooks and test end-to-end with real Claude Code sessions
 
 ### Phase 3: UI Polish
-- [ ] Expandable notification details
-- [ ] Click-to-focus tmux pane
-- [ ] Aggregate status icon logic
-- [ ] Settings panel (socket path, timeout config)
+- [x] Expandable notification details
+- [x] Click-to-focus Ghostty + tmux pane
+- [x] Aggregate status icon logic
+- [ ] Settings panel (socket path, timeout config) - deferred
 
 ### Phase 4: Reliability
 - [ ] Handle socket reconnection
