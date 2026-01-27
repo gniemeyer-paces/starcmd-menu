@@ -97,6 +97,7 @@ public actor SessionManager {
         }
 
         session.status = .working
+        session.lastNotification = nil
         session.lastActivityAt = Date()
 
         sessions[msg.sessionId] = session

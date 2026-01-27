@@ -18,7 +18,7 @@ struct MenuBarView: View {
             quitButton
         }
         .padding(.vertical, 8)
-        .frame(width: 320)
+        .frame(width: 420)
     }
 
     // MARK: - Views
@@ -63,88 +63,105 @@ struct SessionRow: View {
     let session: ClaudeSession
     let onFocus: () -> Void
 
-    @State private var isExpanded = false
+    @State private var isMessageExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Main row
-            Button(action: { isExpanded.toggle() }) {
-                HStack(spacing: 8) {
-                    StatusDot(status: session.status)
+            // Main row - session name is clickable to focus
+            HStack(spacing: 8) {
+                Button(action: onFocus) {
+                    HStack(spacing: 8) {
+                        StatusDot(status: session.status)
 
-                    Text(session.tmuxContext.displayName)
-                        .font(.system(.body, design: .monospaced))
-                        .fontWeight(.medium)
-
-                    Text(statusLabel)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    Spacer()
-
-                    if let elapsed = elapsedTime {
-                        Text(elapsed)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                        Text(session.tmuxContext.displayName)
+                            .font(.system(.body, design: .monospaced))
+                            .fontWeight(.medium)
                     }
+                }
+                .buttonStyle(.plain)
+                .help("Focus in Ghostty")
 
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                Text(statusLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                if let elapsed = elapsedTime {
+                    Text(elapsed)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
 
-            // Expanded details
-            if isExpanded {
-                expandedContent
+            // Preview of notification message (if any)
+            if let notification = session.lastNotification {
+                notificationPreview(notification)
             }
         }
-        .background(isExpanded ? Color.primary.opacity(0.05) : Color.clear)
     }
 
-    private var expandedContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Notification message
-            if let notification = session.lastNotification {
-                if let lastMessage = notification.lastMessage, !lastMessage.isEmpty {
-                    Text("\"\(truncate(lastMessage, to: 100))\"")
-                        .font(.callout)
-                        .foregroundStyle(.primary)
-                        .italic()
-                } else {
-                    Text(notification.message)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+    @ViewBuilder
+    private func notificationPreview(_ notification: SessionNotification) -> some View {
+        let message = notification.lastMessage ?? notification.message
+        let hasLongMessage = message.count > 80
+
+        VStack(alignment: .leading, spacing: 4) {
+            if hasLongMessage {
+                // Expandable message
+                Button(action: { isMessageExpanded.toggle() }) {
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: isMessageExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .frame(width: 10)
+
+                        if isMessageExpanded {
+                            Text(messageText(notification))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .italic(notification.lastMessage != nil)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
+                        } else {
+                            Text(truncate(messageText(notification), to: 60))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .italic(notification.lastMessage != nil)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
                 }
-            }
-
-            // Working directory
-            HStack(spacing: 4) {
-                Image(systemName: "folder")
-                    .font(.caption)
-                Text(abbreviatePath(session.cwd))
-                    .font(.caption)
-            }
-            .foregroundStyle(.tertiary)
-
-            // Focus button
-            Button(action: onFocus) {
+                .buttonStyle(.plain)
+            } else {
+                // Short message, no expansion needed
                 HStack(spacing: 4) {
-                    Image(systemName: "arrow.right.square")
-                    Text("Focus in Ghostty")
+                    Text(messageText(notification))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .italic(notification.lastMessage != nil)
+                        .lineLimit(2)
+                    Spacer()
                 }
-                .font(.caption)
+                .padding(.leading, 14)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
         }
         .padding(.horizontal, 12)
-        .padding(.bottom, 12)
-        .padding(.leading, 24)
+        .padding(.bottom, 8)
+        .padding(.leading, 16)
+    }
+
+    private func messageText(_ notification: SessionNotification) -> String {
+        if let lastMessage = notification.lastMessage, !lastMessage.isEmpty {
+            return "\"\(lastMessage)\""
+        }
+        return notification.message
     }
 
     // MARK: - Helpers

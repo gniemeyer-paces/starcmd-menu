@@ -26,8 +26,7 @@ fi
 LAST_MESSAGE=""
 if [ "$NOTIFICATION_TYPE" = "idle_prompt" ] && [ -f "$TRANSCRIPT_PATH" ]; then
   LAST_MESSAGE=$(tail -100 "$TRANSCRIPT_PATH" | \
-    jq -s '[.[] | select(.type == "assistant")] | last | .message.content[0].text // empty' 2>/dev/null | \
-    head -c 300)
+    jq -s '[.[] | select(.type == "assistant")] | last | .message.content[0].text // empty' 2>/dev/null)
 fi
 
 # Use printf to avoid trailing newlines, handle empty strings properly
