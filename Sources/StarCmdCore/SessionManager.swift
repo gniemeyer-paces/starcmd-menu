@@ -85,10 +85,8 @@ public actor SessionManager {
         session.lastNotification = notification
         session.lastActivityAt = Date()
 
-        // Update tmux context if it changed
-        if let newContext = TmuxContext(from: msg.tmux) {
-            session.tmuxContext = newContext
-        }
+        // Don't update tmux context from notifications - hooks run in current pane,
+        // not the session's pane. Only registration captures the correct pane.
 
         sessions[msg.sessionId] = session
     }

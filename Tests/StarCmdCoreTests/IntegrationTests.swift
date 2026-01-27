@@ -23,7 +23,7 @@ struct IntegrationTests {
 
         // 1. Register a session
         try await sendMessage(to: socketPath, json: """
-        {"type":"register","session_id":"integration-test","tmux":"test:0:1","cwd":"/tmp/test","source":"startup","timestamp":\(Int(Date().timeIntervalSince1970))}
+        {"type":"register","session_id":"integration-test","tmux":"test:main:%10","cwd":"/tmp/test","source":"startup","timestamp":\(Int(Date().timeIntervalSince1970))}
         """)
         try await Task.sleep(for: .milliseconds(100))
 
@@ -33,7 +33,7 @@ struct IntegrationTests {
 
         // 2. Send notification (blocked)
         try await sendMessage(to: socketPath, json: """
-        {"type":"notification","session_id":"integration-test","tmux":"test:0:1","message":"Permission needed","notification_type":"permission_prompt","last_message":"","timestamp":\(Int(Date().timeIntervalSince1970))}
+        {"type":"notification","session_id":"integration-test","tmux":"test:main:%10","message":"Permission needed","notification_type":"permission_prompt","last_message":"","timestamp":\(Int(Date().timeIntervalSince1970))}
         """)
         try await Task.sleep(for: .milliseconds(100))
 
@@ -51,7 +51,7 @@ struct IntegrationTests {
 
         // 4. Send notification (idle)
         try await sendMessage(to: socketPath, json: """
-        {"type":"notification","session_id":"integration-test","tmux":"test:0:1","message":"Waiting","notification_type":"idle_prompt","last_message":"What do you want?","timestamp":\(Int(Date().timeIntervalSince1970))}
+        {"type":"notification","session_id":"integration-test","tmux":"test:main:%10","message":"Waiting","notification_type":"idle_prompt","last_message":"What do you want?","timestamp":\(Int(Date().timeIntervalSince1970))}
         """)
         try await Task.sleep(for: .milliseconds(100))
 

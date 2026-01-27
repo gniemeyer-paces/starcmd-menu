@@ -13,7 +13,7 @@ struct IPCMessageTests {
         {
           "type": "register",
           "session_id": "abc123",
-          "tmux": "dev:0:1",
+          "tmux": "dev:editor:%5",
           "cwd": "/Users/user/project",
           "source": "startup",
           "timestamp": 1706400000
@@ -28,7 +28,7 @@ struct IPCMessageTests {
         }
 
         #expect(reg.sessionId == "abc123")
-        #expect(reg.tmux == "dev:0:1")
+        #expect(reg.tmux == "dev:editor:%5")
         #expect(reg.cwd == "/Users/user/project")
         #expect(reg.source == "startup")
         #expect(reg.timestamp == 1706400000)
@@ -42,7 +42,7 @@ struct IPCMessageTests {
         {
           "type": "notification",
           "session_id": "abc123",
-          "tmux": "dev:0:1",
+          "tmux": "dev:editor:%5",
           "message": "Claude needs permission to use Bash",
           "notification_type": "permission_prompt",
           "last_message": "",
@@ -68,7 +68,7 @@ struct IPCMessageTests {
         {
           "type": "notification",
           "session_id": "abc123",
-          "tmux": "dev:0:1",
+          "tmux": "dev:editor:%5",
           "message": "Claude is waiting for input",
           "notification_type": "idle_prompt",
           "last_message": "What authentication method would you like to use?",

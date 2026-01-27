@@ -30,12 +30,6 @@ final class AppState: ObservableObject {
     private var socketServer: SocketServer?
 
     init() {
-        // Start with hardcoded test data for development
-        #if DEBUG
-        loadTestData()
-        #endif
-
-        // Start socket server
         Task {
             await startSocketServer()
         }
@@ -65,65 +59,24 @@ final class AppState: ObservableObject {
     }
 
     func focusSession(_ session: ClaudeSession) {
-        let tmux = "/opt/homebrew/bin/tmux"
         let target = session.tmuxContext
 
-        // Activate Ghostty
-        if let ghosttyURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.mitchellh.ghostty") {
-            NSWorkspace.shared.openApplication(at: ghosttyURL, configuration: NSWorkspace.OpenConfiguration())
+        // Switch client to target session, then select pane by absolute ID
+        // The pane ID (e.g., %8) uniquely identifies the pane across all sessions
+        let script = """
+        /opt/homebrew/bin/tmux switch-client -t '\(target.session)' && \
+        /opt/homebrew/bin/tmux select-pane -t '\(target.paneId)' && \
+        open -a Ghostty
+        """
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = ["-c", script]
+
+        do {
+            try process.run()
+        } catch {
+            print("StarCmd: Focus failed: \(error)")
         }
-
-        // Select tmux window and pane
-        let selectWindow = Process()
-        selectWindow.executableURL = URL(fileURLWithPath: tmux)
-        selectWindow.arguments = ["select-window", "-t", "\(target.session):\(target.window)"]
-        try? selectWindow.run()
-        selectWindow.waitUntilExit()
-
-        let selectPane = Process()
-        selectPane.executableURL = URL(fileURLWithPath: tmux)
-        selectPane.arguments = ["select-pane", "-t", "\(target.session):\(target.window).\(target.pane)"]
-        try? selectPane.run()
-        selectPane.waitUntilExit()
     }
-
-    // MARK: - Test Data
-
-    #if DEBUG
-    private func loadTestData() {
-        sessions = [
-            ClaudeSession(
-                id: "test1",
-                tmuxContext: TmuxContext(session: "dev", window: 0, pane: 1),
-                cwd: "/Users/test/project",
-                status: .working
-            ),
-            ClaudeSession(
-                id: "test2",
-                tmuxContext: TmuxContext(session: "api", window: 0, pane: 0),
-                cwd: "/Users/test/api",
-                status: .blocked,
-                lastNotification: SessionNotification(
-                    message: "Claude needs permission to use Bash",
-                    type: .permissionPrompt,
-                    lastMessage: nil,
-                    timestamp: Date()
-                )
-            ),
-            ClaudeSession(
-                id: "test3",
-                tmuxContext: TmuxContext(session: "test", window: 1, pane: 2),
-                cwd: "/Users/test/tests",
-                status: .idle,
-                lastNotification: SessionNotification(
-                    message: "Claude is waiting for input",
-                    type: .idlePrompt,
-                    lastMessage: "What authentication method would you like to use?",
-                    timestamp: Date().addingTimeInterval(-120)
-                )
-            )
-        ]
-        aggregateStatus = .blocked
-    }
-    #endif
 }

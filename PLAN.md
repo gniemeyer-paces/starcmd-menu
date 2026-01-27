@@ -178,10 +178,10 @@ echo "{
 exit 0
 ```
 
-#### `starcmd-clear.sh` (UserPromptSubmit Hook)
+#### `starcmd-clear.sh` (UserPromptSubmit + PostToolUse Hook)
 ```bash
 #!/bin/bash
-# Called on UserPromptSubmit - clears blocked/idle status
+# Called on UserPromptSubmit and PostToolUse - clears blocked/idle status
 
 INPUT=$(cat)
 
@@ -208,7 +208,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/local/bin/starcmd-register.sh"
+            "command": "/Users/YOUR_USERNAME/bin/starcmd-register.sh"
           }
         ]
       }
@@ -218,7 +218,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/local/bin/starcmd-deregister.sh"
+            "command": "/Users/YOUR_USERNAME/bin/starcmd-deregister.sh"
           }
         ]
       }
@@ -228,7 +228,7 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/local/bin/starcmd-notify.sh"
+            "command": "/Users/YOUR_USERNAME/bin/starcmd-notify.sh"
           }
         ]
       }
@@ -238,7 +238,17 @@ Add to `~/.claude/settings.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "/usr/local/bin/starcmd-clear.sh"
+            "command": "/Users/YOUR_USERNAME/bin/starcmd-clear.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/YOUR_USERNAME/bin/starcmd-clear.sh"
           }
         ]
       }
@@ -246,6 +256,15 @@ Add to `~/.claude/settings.json`:
   }
 }
 ```
+
+**Hook Event Summary:**
+| Hook | When It Fires | StarCmd Action |
+|------|---------------|----------------|
+| `SessionStart` | Claude Code session begins | Register session (green) |
+| `Notification` | Permission prompt or idle (60s+) | Update status (red/orange) |
+| `UserPromptSubmit` | User submits a text prompt | Clear to green |
+| `PostToolUse` | Tool completes (permission granted) | Clear to green |
+| `SessionEnd` | Session terminates | Remove session |
 
 ## Data Model
 

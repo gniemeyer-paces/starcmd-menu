@@ -3,6 +3,10 @@
 
 INPUT=$(cat)
 
+# Debug logging
+echo "[$(date)] starcmd-clear.sh called" >> /tmp/starcmd-debug.log
+echo "$INPUT" >> /tmp/starcmd-debug.log
+
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id')
 
 echo "{

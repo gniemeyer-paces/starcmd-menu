@@ -52,7 +52,7 @@ struct SocketServerTests {
 
         // Send a test message using nc
         let json = """
-        {"type":"register","session_id":"test123","tmux":"dev:0:1","cwd":"/tmp","source":"startup","timestamp":1234567890}
+        {"type":"register","session_id":"test123","tmux":"dev:editor:%5","cwd":"/tmp","source":"startup","timestamp":1234567890}
         """
 
         // Use Process to send via nc
@@ -97,7 +97,7 @@ struct SocketServerTests {
         // Send multiple messages
         for i in 0..<3 {
             let json = """
-            {"type":"register","session_id":"test\(i)","tmux":"dev:0:\(i)","cwd":"/tmp","source":"startup","timestamp":1234567890}
+            {"type":"register","session_id":"test\(i)","tmux":"dev:editor:%\(i)","cwd":"/tmp","source":"startup","timestamp":1234567890}
             """
 
             let process = Process()

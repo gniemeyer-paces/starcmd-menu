@@ -28,31 +28,30 @@ public enum NotificationType: String, Codable, Equatable {
 // MARK: - Tmux Context
 
 public struct TmuxContext: Codable, Equatable {
-    public let session: String
-    public let window: Int
-    public let pane: Int
+    public let session: String      // Session name
+    public let window: String       // Window name (or index as fallback)
+    public let paneId: String       // Absolute pane ID (e.g., %8)
 
     public var displayName: String {
-        "\(session):\(window):\(pane)"
+        "\(session):\(window):\(paneId)"
     }
 
-    public init(session: String, window: Int, pane: Int) {
+    public init(session: String, window: String, paneId: String) {
         self.session = session
         self.window = window
-        self.pane = pane
+        self.paneId = paneId
     }
 
     public init?(from string: String) {
-        // Parse "session:window:pane" format
-        let parts = string.split(separator: ":")
-        guard parts.count == 3,
-              let window = Int(parts[1]),
-              let pane = Int(parts[2]) else {
+        // Parse "session:window:paneId" format
+        // e.g., "main:editor:%8"
+        let parts = string.split(separator: ":", maxSplits: 2)
+        guard parts.count == 3 else {
             return nil
         }
         self.session = String(parts[0])
-        self.window = window
-        self.pane = pane
+        self.window = String(parts[1])
+        self.paneId = String(parts[2])
     }
 }
 
