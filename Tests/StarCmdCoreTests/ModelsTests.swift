@@ -8,16 +8,17 @@ struct ModelsTests {
 
     @Test("Parse valid tmux context string")
     func tmuxContextParsing() {
-        let context = TmuxContext(from: "dev:editor:%8")
+        let context = TmuxContext(from: "dev:editor:@5:%8")
         #expect(context != nil)
         #expect(context?.session == "dev")
         #expect(context?.window == "editor")
+        #expect(context?.windowId == "@5")
         #expect(context?.paneId == "%8")
     }
 
     @Test("TmuxContext display name format")
     func tmuxContextDisplayName() {
-        let context = TmuxContext(session: "main", window: "code", paneId: "%12")
+        let context = TmuxContext(session: "main", window: "code", windowId: "@3", paneId: "%12")
         #expect(context.displayName == "main:code:%12")
     }
 
@@ -25,6 +26,7 @@ struct ModelsTests {
     func tmuxContextParsingInvalid() {
         #expect(TmuxContext(from: "invalid") == nil)
         #expect(TmuxContext(from: "dev:editor") == nil)
+        #expect(TmuxContext(from: "dev:editor:%8") == nil)  // Missing windowId
         #expect(TmuxContext(from: "standalone") == nil)
     }
 
@@ -41,7 +43,7 @@ struct ModelsTests {
 
     @Test("Create session with defaults")
     func claudeSessionCreation() {
-        let context = TmuxContext(session: "dev", window: "editor", paneId: "%5")
+        let context = TmuxContext(session: "dev", window: "editor", windowId: "@2", paneId: "%5")
         let session = ClaudeSession(
             id: "abc123",
             tmuxContext: context,

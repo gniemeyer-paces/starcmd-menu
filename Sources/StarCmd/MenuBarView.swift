@@ -12,6 +12,13 @@ struct MenuBarView: View {
                 sessionListView
             }
 
+            if appState.canGoBack || appState.canGoForward {
+                Divider()
+                    .padding(.vertical, 8)
+
+                navigationButtons
+            }
+
             Divider()
                 .padding(.vertical, 8)
 
@@ -45,6 +52,33 @@ struct MenuBarView: View {
                 appState.focusSession(session)
             }
         }
+    }
+
+    private var navigationButtons: some View {
+        HStack(spacing: 12) {
+            Button(action: { appState.goBack() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "chevron.left")
+                    Text("Back")
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(!appState.canGoBack)
+            .foregroundStyle(appState.canGoBack ? .primary : .tertiary)
+
+            Button(action: { appState.goForward() }) {
+                HStack(spacing: 4) {
+                    Text("Forward")
+                    Image(systemName: "chevron.right")
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(!appState.canGoForward)
+            .foregroundStyle(appState.canGoForward ? .primary : .tertiary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 12)
     }
 
     private var quitButton: some View {

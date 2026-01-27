@@ -143,8 +143,19 @@ public struct IPCMessageParser {
 
 // MARK: - Errors
 
-public enum IPCError: Error, Equatable {
+public enum IPCError: Error, Equatable, LocalizedError {
     case unknownMessageType(String)
     case invalidJSON
     case socketError(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .unknownMessageType(let type):
+            return "Unknown message type: \(type)"
+        case .invalidJSON:
+            return "Invalid JSON message"
+        case .socketError(let message):
+            return message
+        }
+    }
 }

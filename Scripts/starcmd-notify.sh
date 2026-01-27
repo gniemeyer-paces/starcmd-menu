@@ -16,8 +16,9 @@ TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path')
 if [ -n "$TMUX" ]; then
   TMUX_SESSION=$(/opt/homebrew/bin/tmux display-message -p '#S')
   TMUX_WINDOW=$(/opt/homebrew/bin/tmux display-message -p '#W')
+  TMUX_WINDOW_ID=$(/opt/homebrew/bin/tmux display-message -p '#{window_id}')
   TMUX_PANE_ID=$(/opt/homebrew/bin/tmux display-message -p '#{pane_id}')
-  TMUX_CONTEXT="${TMUX_SESSION}:${TMUX_WINDOW}:${TMUX_PANE_ID}"
+  TMUX_CONTEXT="${TMUX_SESSION}:${TMUX_WINDOW}:${TMUX_WINDOW_ID}:${TMUX_PANE_ID}"
 else
   TMUX_CONTEXT="standalone"
 fi

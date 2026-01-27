@@ -16,8 +16,36 @@ public actor SocketServer {
     }
 
     public func start() throws {
-        // Remove existing socket file if present
-        try? FileManager.default.removeItem(atPath: path)
+        // Check if another instance is already running
+        if FileManager.default.fileExists(atPath: path) {
+            let testSocket = socket(AF_UNIX, SOCK_STREAM, 0)
+            defer { close(testSocket) }
+
+            var addr = sockaddr_un()
+            addr.sun_family = sa_family_t(AF_UNIX)
+            let pathBytes = path.utf8CString
+            withUnsafeMutablePointer(to: &addr.sun_path) { sunPath in
+                pathBytes.withUnsafeBufferPointer { pathBuffer in
+                    let dest = UnsafeMutableRawPointer(sunPath).assumingMemoryBound(to: CChar.self)
+                    for i in 0..<min(pathBuffer.count, 104) {
+                        dest[i] = pathBuffer[i]
+                    }
+                }
+            }
+
+            let connectResult = withUnsafePointer(to: &addr) { addrPtr in
+                addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockaddrPtr in
+                    connect(testSocket, sockaddrPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+                }
+            }
+
+            if connectResult == 0 {
+                throw IPCError.socketError("Another instance of StarCmd is already running")
+            }
+
+            // Stale socket file from crashed instance - remove it
+            try? FileManager.default.removeItem(atPath: path)
+        }
 
         // Create socket
         serverSocket = socket(AF_UNIX, SOCK_STREAM, 0)

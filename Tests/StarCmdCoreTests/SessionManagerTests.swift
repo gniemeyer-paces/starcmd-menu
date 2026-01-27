@@ -11,7 +11,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.register(RegisterMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             cwd: "/Users/test/project",
             source: "startup",
             timestamp: 1706400000
@@ -29,7 +29,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.register(RegisterMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             cwd: "/tmp",
             source: "startup",
             timestamp: 1706400000
@@ -37,7 +37,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.notification(NotificationMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             message: "Claude needs permission",
             notificationType: "permission_prompt",
             lastMessage: nil,
@@ -55,7 +55,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.register(RegisterMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             cwd: "/tmp",
             source: "startup",
             timestamp: 1706400000
@@ -63,7 +63,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.notification(NotificationMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             message: "Waiting for input",
             notificationType: "idle_prompt",
             lastMessage: "What auth method?",
@@ -81,7 +81,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.register(RegisterMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             cwd: "/tmp",
             source: "startup",
             timestamp: 1706400000
@@ -89,7 +89,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.notification(NotificationMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             message: "Permission needed",
             notificationType: "permission_prompt",
             lastMessage: nil,
@@ -112,7 +112,7 @@ struct SessionManagerTests {
 
         await manager.handleMessage(.register(RegisterMessage(
             sessionId: "abc123",
-            tmux: "dev:editor:%5",
+            tmux: "dev:editor:@2:%5",
             cwd: "/tmp",
             source: "startup",
             timestamp: 1706400000
@@ -138,26 +138,26 @@ struct SessionManagerTests {
 
         // One working session
         await manager.handleMessage(.register(RegisterMessage(
-            sessionId: "s1", tmux: "dev:editor:%5", cwd: "/tmp", source: "startup", timestamp: 1
+            sessionId: "s1", tmux: "dev:editor:@2:%5", cwd: "/tmp", source: "startup", timestamp: 1
         )))
         #expect(await manager.aggregateStatus == .working)
 
         // Add idle session - should be idle (orange)
         await manager.handleMessage(.register(RegisterMessage(
-            sessionId: "s2", tmux: "dev:editor:%6", cwd: "/tmp", source: "startup", timestamp: 2
+            sessionId: "s2", tmux: "dev:editor:@3:%6", cwd: "/tmp", source: "startup", timestamp: 2
         )))
         await manager.handleMessage(.notification(NotificationMessage(
-            sessionId: "s2", tmux: "dev:editor:%6", message: "Idle",
+            sessionId: "s2", tmux: "dev:editor:@3:%6", message: "Idle",
             notificationType: "idle_prompt", lastMessage: nil, timestamp: 3
         )))
         #expect(await manager.aggregateStatus == .idle)
 
         // Add blocked session - should be blocked (red)
         await manager.handleMessage(.register(RegisterMessage(
-            sessionId: "s3", tmux: "dev:editor:%7", cwd: "/tmp", source: "startup", timestamp: 4
+            sessionId: "s3", tmux: "dev:editor:@4:%7", cwd: "/tmp", source: "startup", timestamp: 4
         )))
         await manager.handleMessage(.notification(NotificationMessage(
-            sessionId: "s3", tmux: "dev:editor:%7", message: "Permission",
+            sessionId: "s3", tmux: "dev:editor:@4:%7", message: "Permission",
             notificationType: "permission_prompt", lastMessage: nil, timestamp: 5
         )))
         #expect(await manager.aggregateStatus == .blocked)
