@@ -1,6 +1,12 @@
 import SwiftUI
 import StarCmdCore
 
+// Logging that flushes immediately (for LaunchAgent)
+func log(_ message: String) {
+    let line = "StarCmd: \(message)\n"
+    FileHandle.standardError.write(Data(line.utf8))
+}
+
 // Change this to try different icon styles:
 // .solid, .stacked, .stackedFading, .cascade, .dual
 let currentIconStyle: IconStyle = .dual
@@ -103,9 +109,9 @@ final class AppState: ObservableObject {
 
         do {
             try await socketServer?.start()
-            print("StarCmd: Socket server started at /tmp/starcmd.sock")
+            log("Socket server started at /tmp/starcmd.sock")
         } catch {
-            print("StarCmd: \(error.localizedDescription)")
+            log("\(error.localizedDescription)")
             // Exit if we can't start (e.g., another instance is running)
             NSApplication.shared.terminate(nil)
         }
@@ -159,17 +165,20 @@ final class AppState: ObservableObject {
         do {
             try process.run()
         } catch {
-            print("StarCmd: Focus failed: \(error)")
+            log("Focus failed: \(error)")
         }
     }
 
     private func getCurrentPane() -> PaneLocation? {
+        // Use list-clients to get the most recently active client's pane
+        // (display-message -p doesn't work from a non-tmux process)
         let process = Process()
         let pipe = Pipe()
 
         process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/tmux")
-        process.arguments = ["display-message", "-p", "#{session_name}\t#{window_id}\t#{pane_id}"]
+        process.arguments = ["list-clients", "-F", "#{client_activity}|#{session_name}|#{window_id}|#{pane_id}"]
         process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
 
         do {
             try process.run()
@@ -177,12 +186,31 @@ final class AppState: ObservableObject {
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !output.isEmpty else { return nil }
+                  !output.isEmpty else {
+                return nil
+            }
 
-            let parts = output.split(separator: "\t")
-            guard parts.count == 3 else { return nil }
+            // Parse lines and find most recently active client
+            let lines = output.split(separator: "\n")
+            var bestActivity: Int = 0
+            var bestLocation: PaneLocation?
 
-            return PaneLocation(session: String(parts[0]), windowId: String(parts[1]), paneId: String(parts[2]))
+            for line in lines {
+                let parts = line.split(separator: "|")
+                guard parts.count == 4,
+                      let activity = Int(parts[0]) else { continue }
+
+                if activity > bestActivity {
+                    bestActivity = activity
+                    bestLocation = PaneLocation(
+                        session: String(parts[1]),
+                        windowId: String(parts[2]),
+                        paneId: String(parts[3])
+                    )
+                }
+            }
+
+            return bestLocation
         } catch {
             return nil
         }
