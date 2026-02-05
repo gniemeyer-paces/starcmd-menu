@@ -101,10 +101,15 @@ final class AppState: ObservableObject {
         let manager = sessionManager
 
         socketServer = SocketServer(path: "/tmp/starcmd.sock") { [weak self] message in
+            if case .list = message {
+                return await manager.listSessionsData()
+            }
+
             Task { @MainActor in
                 await manager.handleMessage(message)
                 await self?.refreshFromManager()
             }
+            return nil
         }
 
         do {

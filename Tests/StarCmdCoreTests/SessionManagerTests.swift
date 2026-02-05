@@ -5,7 +5,7 @@ import Foundation
 @Suite("Session Manager Tests")
 struct SessionManagerTests {
 
-    @Test("Register creates new session")
+    @Test("Register creates new session keyed by pane ID")
     func registerSession() async {
         let manager = SessionManager()
 
@@ -19,8 +19,9 @@ struct SessionManagerTests {
 
         let sessions = await manager.sessions
         #expect(sessions.count == 1)
-        #expect(sessions["abc123"]?.tmuxContext.displayName == "dev:editor:%5")
-        #expect(sessions["abc123"]?.status == .working)
+        #expect(sessions["%5"]?.tmuxContext.displayName == "dev:editor:%5")
+        #expect(sessions["%5"]?.status == .working)
+        #expect(sessions["%5"]?.id == "abc123")
     }
 
     @Test("Notification updates session status to blocked")
@@ -45,8 +46,8 @@ struct SessionManagerTests {
         )))
 
         let sessions = await manager.sessions
-        #expect(sessions["abc123"]?.status == .blocked)
-        #expect(sessions["abc123"]?.lastNotification?.message == "Claude needs permission")
+        #expect(sessions["%5"]?.status == .blocked)
+        #expect(sessions["%5"]?.lastNotification?.message == "Claude needs permission")
     }
 
     @Test("Notification updates session status to idle")
@@ -71,8 +72,8 @@ struct SessionManagerTests {
         )))
 
         let sessions = await manager.sessions
-        #expect(sessions["abc123"]?.status == .idle)
-        #expect(sessions["abc123"]?.lastNotification?.lastMessage == "What auth method?")
+        #expect(sessions["%5"]?.status == .idle)
+        #expect(sessions["%5"]?.lastNotification?.lastMessage == "What auth method?")
     }
 
     @Test("Clear resets session status to working")
@@ -96,14 +97,14 @@ struct SessionManagerTests {
             timestamp: 1706400100
         )))
 
-        #expect(await manager.sessions["abc123"]?.status == .blocked)
+        #expect(await manager.sessions["%5"]?.status == .blocked)
 
         await manager.handleMessage(.clear(ClearMessage(
             sessionId: "abc123",
             timestamp: 1706400150
         )))
 
-        #expect(await manager.sessions["abc123"]?.status == .working)
+        #expect(await manager.sessions["%5"]?.status == .working)
     }
 
     @Test("Deregister removes session")
@@ -161,5 +162,80 @@ struct SessionManagerTests {
             notificationType: "permission_prompt", lastMessage: nil, timestamp: 5
         )))
         #expect(await manager.aggregateStatus == .blocked)
+    }
+
+    @Test("Registering new session in same pane evicts old session")
+    func paneEviction() async {
+        let manager = SessionManager()
+
+        // Register first session in pane %5
+        await manager.handleMessage(.register(RegisterMessage(
+            sessionId: "old-session",
+            tmux: "dev:editor:@2:%5",
+            cwd: "/tmp",
+            source: "startup",
+            timestamp: 1706400000
+        )))
+
+        #expect(await manager.sessions.count == 1)
+        #expect(await manager.sessions["%5"]?.id == "old-session")
+
+        // Register new session in same pane %5
+        await manager.handleMessage(.register(RegisterMessage(
+            sessionId: "new-session",
+            tmux: "dev:editor:@2:%5",
+            cwd: "/tmp/other",
+            source: "startup",
+            timestamp: 1706400100
+        )))
+
+        // Should still be 1 session, now the new one
+        let sessions = await manager.sessions
+        #expect(sessions.count == 1)
+        #expect(sessions["%5"]?.id == "new-session")
+        #expect(sessions["%5"]?.cwd == "/tmp/other")
+    }
+
+    @Test("List returns session data as JSON")
+    func listSessions() async throws {
+        let manager = SessionManager()
+
+        await manager.handleMessage(.register(RegisterMessage(
+            sessionId: "abc123",
+            tmux: "dev:editor:@2:%5",
+            cwd: "/Users/test/project",
+            source: "startup",
+            timestamp: 1706400000
+        )))
+
+        let data = await manager.listSessionsData()
+        let json = try JSONDecoder().decode([[String: AnyCodable]].self, from: data)
+
+        #expect(json.count == 1)
+        #expect(json[0]["sessionId"]?.stringValue == "abc123")
+        #expect(json[0]["paneId"]?.stringValue == "%5")
+        #expect(json[0]["status"]?.stringValue == "working")
+    }
+}
+
+/// Minimal type-erased Codable for test JSON inspection
+private struct AnyCodable: Decodable {
+    let value: Any
+
+    var stringValue: String? { value as? String }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let string = try? container.decode(String.self) {
+            value = string
+        } else if let int = try? container.decode(Int.self) {
+            value = int
+        } else if let bool = try? container.decode(Bool.self) {
+            value = bool
+        } else if container.decodeNil() {
+            value = NSNull()
+        } else {
+            value = try container.decode([String: AnyCodable].self)
+        }
     }
 }

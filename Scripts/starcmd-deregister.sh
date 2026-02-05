@@ -6,6 +6,9 @@ INPUT=$(cat)
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id')
 REASON=$(echo "$INPUT" | jq -r '.reason')
 
+# Debug log: structured single-line entry for easy parsing
+echo "{\"ts\":\"$(date -Iseconds)\",\"hook\":\"deregister\",\"session_id\":\"$SESSION_ID\",\"reason\":\"$REASON\"}" >> /tmp/starcmd-debug.log
+
 echo "{
   \"type\": \"deregister\",
   \"session_id\": \"$SESSION_ID\",

@@ -8,6 +8,7 @@ public enum IPCMessage: Equatable {
     case notification(NotificationMessage)
     case clear(ClearMessage)
     case deregister(DeregisterMessage)
+    case list(ListMessage)
 }
 
 // MARK: - Register Message
@@ -109,6 +110,23 @@ public struct DeregisterMessage: Codable, Equatable {
     }
 }
 
+// MARK: - List Message
+
+public struct ListMessage: Codable, Equatable {
+    public let sessionId: String?
+    public let timestamp: Int
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case timestamp
+    }
+
+    public init(sessionId: String? = nil, timestamp: Int) {
+        self.sessionId = sessionId
+        self.timestamp = timestamp
+    }
+}
+
 // MARK: - Message Parsing
 
 public struct IPCMessageParser {
@@ -135,6 +153,9 @@ public struct IPCMessageParser {
         case "deregister":
             let message = try JSONDecoder().decode(DeregisterMessage.self, from: data)
             return .deregister(message)
+        case "list":
+            let message = try JSONDecoder().decode(ListMessage.self, from: data)
+            return .list(message)
         default:
             throw IPCError.unknownMessageType(wrapper.type)
         }

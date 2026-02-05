@@ -3,10 +3,6 @@
 
 INPUT=$(cat)
 
-# Debug logging
-echo "[$(date)] starcmd-notify.sh called" >> /tmp/starcmd-debug.log
-echo "$INPUT" >> /tmp/starcmd-debug.log
-
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id')
 MESSAGE=$(echo "$INPUT" | jq -r '.message')
 NOTIFICATION_TYPE=$(echo "$INPUT" | jq -r '.notification_type')
@@ -51,7 +47,9 @@ OUTPUT="{
   \"timestamp\": $(date +%s)
 }"
 
-echo "Sending: $OUTPUT" >> /tmp/starcmd-debug.log
+# Debug log: structured single-line entry for easy parsing
+echo "{\"ts\":\"$(date -Iseconds)\",\"hook\":\"notify\",\"session_id\":\"$SESSION_ID\",\"tmux\":\"$TMUX_CONTEXT\",\"notification_type\":\"$NOTIFICATION_TYPE\"}" >> /tmp/starcmd-debug.log
+
 echo "$OUTPUT" | nc -U /tmp/starcmd.sock 2>/dev/null
 
 exit 0

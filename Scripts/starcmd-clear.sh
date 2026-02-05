@@ -3,11 +3,10 @@
 
 INPUT=$(cat)
 
-# Debug logging
-echo "[$(date)] starcmd-clear.sh called" >> /tmp/starcmd-debug.log
-echo "$INPUT" >> /tmp/starcmd-debug.log
-
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id')
+
+# Debug log: structured single-line entry for easy parsing
+echo "{\"ts\":\"$(date -Iseconds)\",\"hook\":\"clear\",\"session_id\":\"$SESSION_ID\"}" >> /tmp/starcmd-debug.log
 
 echo "{
   \"type\": \"clear\",

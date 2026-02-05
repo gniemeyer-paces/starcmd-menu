@@ -134,6 +134,49 @@ struct IPCMessageTests {
         #expect(dereg.reason == "exit")
     }
 
+    // MARK: - List Message Tests
+
+    @Test("Parse list message")
+    func parseListMessage() throws {
+        let json = """
+        {
+          "type": "list",
+          "timestamp": 1706400300
+        }
+        """
+
+        let message = try parser.parse(json.data(using: .utf8)!)
+
+        guard case .list(let list) = message else {
+            Issue.record("Expected list message")
+            return
+        }
+
+        #expect(list.sessionId == nil)
+        #expect(list.timestamp == 1706400300)
+    }
+
+    @Test("Parse list message with session_id")
+    func parseListMessageWithSessionId() throws {
+        let json = """
+        {
+          "type": "list",
+          "session_id": "abc123",
+          "timestamp": 1706400300
+        }
+        """
+
+        let message = try parser.parse(json.data(using: .utf8)!)
+
+        guard case .list(let list) = message else {
+            Issue.record("Expected list message")
+            return
+        }
+
+        #expect(list.sessionId == "abc123")
+        #expect(list.timestamp == 1706400300)
+    }
+
     // MARK: - Error Cases
 
     @Test("Unknown message type throws error")

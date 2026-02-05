@@ -14,7 +14,8 @@ struct IntegrationTests {
 
         // Start socket server with session manager
         let server = SocketServer(path: socketPath) { message in
-            Task { await sessionManager.handleMessage(message) }
+            await sessionManager.handleMessage(message)
+            return nil
         }
         try await server.start()
 
@@ -29,7 +30,7 @@ struct IntegrationTests {
 
         var sessions = await sessionManager.sessions
         #expect(sessions.count == 1)
-        #expect(sessions["integration-test"]?.status == .working)
+        #expect(sessions["%10"]?.status == .working)
 
         // 2. Send notification (blocked)
         try await sendMessage(to: socketPath, json: """
@@ -38,7 +39,7 @@ struct IntegrationTests {
         try await Task.sleep(for: .milliseconds(100))
 
         sessions = await sessionManager.sessions
-        #expect(sessions["integration-test"]?.status == .blocked)
+        #expect(sessions["%10"]?.status == .blocked)
 
         // 3. Clear (user submitted prompt)
         try await sendMessage(to: socketPath, json: """
@@ -47,7 +48,7 @@ struct IntegrationTests {
         try await Task.sleep(for: .milliseconds(100))
 
         sessions = await sessionManager.sessions
-        #expect(sessions["integration-test"]?.status == .working)
+        #expect(sessions["%10"]?.status == .working)
 
         // 4. Send notification (idle)
         try await sendMessage(to: socketPath, json: """
@@ -56,8 +57,8 @@ struct IntegrationTests {
         try await Task.sleep(for: .milliseconds(100))
 
         sessions = await sessionManager.sessions
-        #expect(sessions["integration-test"]?.status == .idle)
-        #expect(sessions["integration-test"]?.lastNotification?.lastMessage == "What do you want?")
+        #expect(sessions["%10"]?.status == .idle)
+        #expect(sessions["%10"]?.lastNotification?.lastMessage == "What do you want?")
 
         // 5. Deregister
         try await sendMessage(to: socketPath, json: """
@@ -78,7 +79,8 @@ struct IntegrationTests {
 
         let collector = MessageCollector()
         let server = SocketServer(path: socketPath) { message in
-            Task { await collector.append(message) }
+            await collector.append(message)
+            return nil
         }
         try await server.start()
         try await Task.sleep(for: .milliseconds(100))

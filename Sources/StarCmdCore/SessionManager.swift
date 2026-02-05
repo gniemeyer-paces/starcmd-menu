@@ -1,8 +1,19 @@
 import Foundation
 
+/// Logging helper that writes to stderr and flushes immediately
+private func debugLog(_ message: String) {
+    let line = "StarCmd [SessionManager]: \(message)\n"
+    FileHandle.standardError.write(Data(line.utf8))
+}
+
 /// Manages Claude Code sessions and their states
+/// Sessions are keyed by tmux pane ID to avoid stale sessions when SessionEnd doesn't fire.
 public actor SessionManager {
+    /// Sessions keyed by pane ID (e.g. "%5")
     public private(set) var sessions: [String: ClaudeSession] = [:]
+
+    /// Reverse lookup: sessionId → paneId
+    private var sessionIdToPaneId: [String: String] = [:]
 
     public init() {}
 
@@ -17,6 +28,8 @@ public actor SessionManager {
             handleClear(msg)
         case .deregister(let msg):
             handleDeregister(msg)
+        case .list:
+            break // handled externally via listSessionsData()
         }
     }
 
@@ -43,12 +56,67 @@ public actor SessionManager {
         sessions.values.sorted { $0.lastActivityAt > $1.lastActivityAt }
     }
 
+    /// Returns JSON array of all sessions for the list endpoint
+    public func listSessionsData() -> Data {
+        struct SessionInfo: Encodable {
+            let sessionId: String
+            let paneId: String
+            let status: String
+            let cwd: String
+            let tmux: String
+            let registeredAt: Int
+            let lastActivityAt: Int
+            let lastNotification: NotificationInfo?
+
+            struct NotificationInfo: Encodable {
+                let message: String
+                let type: String
+                let lastMessage: String?
+            }
+        }
+
+        let infos = sessions.map { (paneId, session) in
+            SessionInfo(
+                sessionId: session.id,
+                paneId: paneId,
+                status: session.status.rawValue,
+                cwd: session.cwd,
+                tmux: session.tmuxContext.displayName,
+                registeredAt: Int(session.registeredAt.timeIntervalSince1970),
+                lastActivityAt: Int(session.lastActivityAt.timeIntervalSince1970),
+                lastNotification: session.lastNotification.map {
+                    SessionInfo.NotificationInfo(
+                        message: $0.message,
+                        type: $0.type.rawValue,
+                        lastMessage: $0.lastMessage
+                    )
+                }
+            )
+        }
+
+        return (try? JSONEncoder().encode(infos)) ?? Data("[]".utf8)
+    }
+
     // MARK: - Message Handlers
 
     private func handleRegister(_ msg: RegisterMessage) {
         guard let tmuxContext = TmuxContext(from: msg.tmux) else {
-            // Invalid tmux context - ignore registration
+            debugLog("register: ignoring session \(msg.sessionId) — invalid tmux context '\(msg.tmux)'")
             return
+        }
+
+        let paneId = tmuxContext.paneId
+
+        // If a different session already owns this pane, evict it
+        if let existing = sessions[paneId], existing.id != msg.sessionId {
+            debugLog("register: evicting session \(existing.id) from pane \(paneId) (replaced by \(msg.sessionId))")
+            sessionIdToPaneId.removeValue(forKey: existing.id)
+        }
+
+        // If this sessionId was previously on a different pane, clean up that mapping
+        if let oldPaneId = sessionIdToPaneId[msg.sessionId], oldPaneId != paneId {
+            debugLog("register: session \(msg.sessionId) moved from pane \(oldPaneId) to \(paneId)")
+            sessions.removeValue(forKey: oldPaneId)
         }
 
         let session = ClaudeSession(
@@ -60,12 +128,15 @@ public actor SessionManager {
             lastActivityAt: Date()
         )
 
-        sessions[msg.sessionId] = session
+        sessions[paneId] = session
+        sessionIdToPaneId[msg.sessionId] = paneId
+        debugLog("register: session \(msg.sessionId) in pane \(paneId) (\(tmuxContext.displayName))")
     }
 
     private func handleNotification(_ msg: NotificationMessage) {
-        guard var session = sessions[msg.sessionId] else {
-            // Unknown session - could auto-register if we wanted
+        guard let paneId = sessionIdToPaneId[msg.sessionId],
+              var session = sessions[paneId] else {
+            debugLog("notification: unknown session \(msg.sessionId)")
             return
         }
 
@@ -85,14 +156,14 @@ public actor SessionManager {
         session.lastNotification = notification
         session.lastActivityAt = Date()
 
-        // Don't update tmux context from notifications - hooks run in current pane,
-        // not the session's pane. Only registration captures the correct pane.
-
-        sessions[msg.sessionId] = session
+        sessions[paneId] = session
+        debugLog("notification: session \(msg.sessionId) → \(newStatus) (\(msg.notificationType))")
     }
 
     private func handleClear(_ msg: ClearMessage) {
-        guard var session = sessions[msg.sessionId] else {
+        guard let paneId = sessionIdToPaneId[msg.sessionId],
+              var session = sessions[paneId] else {
+            debugLog("clear: unknown session \(msg.sessionId)")
             return
         }
 
@@ -100,10 +171,18 @@ public actor SessionManager {
         session.lastNotification = nil
         session.lastActivityAt = Date()
 
-        sessions[msg.sessionId] = session
+        sessions[paneId] = session
+        debugLog("clear: session \(msg.sessionId) → working")
     }
 
     private func handleDeregister(_ msg: DeregisterMessage) {
-        sessions.removeValue(forKey: msg.sessionId)
+        guard let paneId = sessionIdToPaneId[msg.sessionId] else {
+            debugLog("deregister: unknown session \(msg.sessionId)")
+            return
+        }
+
+        sessions.removeValue(forKey: paneId)
+        sessionIdToPaneId.removeValue(forKey: msg.sessionId)
+        debugLog("deregister: session \(msg.sessionId) from pane \(paneId)")
     }
 }

@@ -3,14 +3,14 @@ import Foundation
 /// Unix domain socket server for receiving IPC messages from hook scripts
 public actor SocketServer {
     private let path: String
-    private let messageHandler: @Sendable (IPCMessage) -> Void
+    private let messageHandler: @Sendable (IPCMessage) async -> Data?
     private let parser = IPCMessageParser()
 
     private var serverSocket: Int32 = -1
     private var isRunning = false
     private var acceptTask: Task<Void, Never>?
 
-    public init(path: String, messageHandler: @escaping @Sendable (IPCMessage) -> Void = { _ in }) {
+    public init(path: String, messageHandler: @escaping @Sendable (IPCMessage) async -> Data? = { _ in nil }) {
         self.path = path
         self.messageHandler = messageHandler
     }
@@ -128,7 +128,7 @@ public actor SocketServer {
         serverSocket: Int32,
         path: String,
         parser: IPCMessageParser,
-        messageHandler: @escaping @Sendable (IPCMessage) -> Void,
+        messageHandler: @escaping @Sendable (IPCMessage) async -> Data?,
         isRunning: @escaping () async -> Bool
     ) async {
         while await isRunning() && !Task.isCancelled {
@@ -151,16 +151,16 @@ public actor SocketServer {
                 break
             }
 
-            // Handle client synchronously (messages are small)
-            Self.handleClient(socket: clientSocket, parser: parser, messageHandler: messageHandler)
+            // Handle client (may need async for response)
+            await handleClient(socket: clientSocket, parser: parser, messageHandler: messageHandler)
         }
     }
 
     private static func handleClient(
         socket clientSocket: Int32,
         parser: IPCMessageParser,
-        messageHandler: @escaping @Sendable (IPCMessage) -> Void
-    ) {
+        messageHandler: @escaping @Sendable (IPCMessage) async -> Data?
+    ) async {
         defer { close(clientSocket) }
 
         var buffer = [UInt8](repeating: 0, count: 8192)
@@ -178,7 +178,14 @@ public actor SocketServer {
 
         do {
             let message = try parser.parse(data)
-            messageHandler(message)
+            let responseData = await messageHandler(message)
+
+            // If handler returned response data, write it back before closing
+            if let responseData {
+                _ = responseData.withUnsafeBytes { bytes in
+                    write(clientSocket, bytes.baseAddress!, bytes.count)
+                }
+            }
         } catch {
             // Log error but don't crash - invalid messages are silently ignored
             print("StarCmd: Failed to parse message: \(error)")

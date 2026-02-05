@@ -22,14 +22,18 @@ else
   TMUX_CONTEXT="standalone"
 fi
 
-# Send registration to menu bar app
-echo "{
+OUTPUT="{
   \"type\": \"register\",
   \"session_id\": \"$SESSION_ID\",
   \"tmux\": \"$TMUX_CONTEXT\",
   \"cwd\": \"$CWD\",
   \"source\": \"$SOURCE\",
   \"timestamp\": $(date +%s)
-}" | nc -U /tmp/starcmd.sock 2>/dev/null
+}"
+
+# Debug log: structured single-line entry for easy parsing
+echo "{\"ts\":\"$(date -Iseconds)\",\"hook\":\"register\",\"session_id\":\"$SESSION_ID\",\"tmux\":\"$TMUX_CONTEXT\",\"cwd\":\"$CWD\"}" >> /tmp/starcmd-debug.log
+
+echo "$OUTPUT" | nc -U /tmp/starcmd.sock 2>/dev/null
 
 exit 0

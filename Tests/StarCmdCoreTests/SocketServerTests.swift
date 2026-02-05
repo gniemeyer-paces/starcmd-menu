@@ -46,7 +46,8 @@ struct SocketServerTests {
 
         let collector = MessageCollector()
         let server = SocketServer(path: socketPath) { message in
-            Task { await collector.append(message) }
+            await collector.append(message)
+            return nil
         }
         try await server.start()
 
@@ -90,7 +91,8 @@ struct SocketServerTests {
 
         let collector = MessageCollector()
         let server = SocketServer(path: socketPath) { message in
-            Task { await collector.append(message) }
+            await collector.append(message)
+            return nil
         }
         try await server.start()
 
