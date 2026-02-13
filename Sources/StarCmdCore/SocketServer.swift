@@ -182,8 +182,13 @@ public actor SocketServer {
 
             // If handler returned response data, write it back before closing
             if let responseData {
-                _ = responseData.withUnsafeBytes { bytes in
-                    write(clientSocket, bytes.baseAddress!, bytes.count)
+                responseData.withUnsafeBytes { bytes in
+                    var totalWritten = 0
+                    while totalWritten < bytes.count {
+                        let written = write(clientSocket, bytes.baseAddress! + totalWritten, bytes.count - totalWritten)
+                        if written <= 0 { break }
+                        totalWritten += written
+                    }
                 }
             }
         } catch {

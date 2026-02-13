@@ -24,3 +24,11 @@ echo "StarCmd installed successfully!"
 echo ""
 echo "Make sure your ~/.claude/settings.json has the hooks configured."
 echo "See PLAN.md for the hook configuration."
+echo ""
+echo "Tmux integration: add the following to your ~/.tmux.conf:"
+echo '  bind-key C display-popup -E -h "60%" -w "80%" "bash ~/bin/starcmd-tmux.sh pick"'
+echo '  bind-key B run-shell "bash ~/bin/starcmd-tmux.sh back"'
+echo '  bind-key F run-shell "bash ~/bin/starcmd-tmux.sh forward"'
+echo '  set -g status-right "#(bash ~/bin/starcmd-tmux.sh status) ..."'
+echo '  set -g status-right-length 100'
+echo '  set -g status-interval 2'
