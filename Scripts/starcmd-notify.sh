@@ -52,4 +52,42 @@ echo "{\"ts\":\"$(date -Iseconds)\",\"hook\":\"notify\",\"session_id\":\"$SESSIO
 
 echo "$OUTPUT" | nc -U /tmp/starcmd.sock 2>/dev/null
 
+# Flash tmux status bar on notification
+if [ -n "$TMUX" ]; then
+  TMX=/opt/homebrew/bin/tmux
+  case "$NOTIFICATION_TYPE" in
+    tool_error|blocked_on_user_permission)
+      FLASH_BG="red" ;;
+    *)
+      FLASH_BG="colour208" ;;  # orange
+  esac
+  # Signal the glow loop — blocked (red) supersedes idle (orange)
+  CURRENT_GLOW=$($TMX show-environment -g STARCMD_GLOW 2>/dev/null | cut -d= -f2)
+  if [ "$CURRENT_GLOW" != "red" ] || [ "$FLASH_BG" = "red" ]; then
+    $TMX set-environment -g STARCMD_GLOW "$FLASH_BG" 2>/dev/null
+  fi
+  # Only start the loop if one isn't already running
+  GLOW_PID=$($TMX show-environment -g STARCMD_GLOW_PID 2>/dev/null | cut -d= -f2)
+  if [ -z "$GLOW_PID" ] || ! kill -0 "$GLOW_PID" 2>/dev/null; then
+    (
+      ORIG_STYLE=$($TMX show-options -gv status-style 2>/dev/null)
+      while true; do
+        GLOW=$($TMX show-environment -g STARCMD_GLOW 2>/dev/null | cut -d= -f2)
+        [ -z "$GLOW" ] && break
+        for c in colour64 colour100 colour136 colour172 "$GLOW"; do
+          $TMX set-option -g status-style "bg=$c,fg=black" 2>/dev/null
+          sleep 0.08
+        done
+        for c in colour172 colour136 colour100 colour64; do
+          $TMX set-option -g status-style "bg=$c,fg=black" 2>/dev/null
+          sleep 0.08
+        done
+        $TMX set-option -g status-style "$ORIG_STYLE" 2>/dev/null
+        sleep 0.3
+      done
+    ) &
+    $TMX set-environment -g STARCMD_GLOW_PID "$!" 2>/dev/null
+  fi
+fi
+
 exit 0

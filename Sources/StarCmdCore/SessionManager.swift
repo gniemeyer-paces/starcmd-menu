@@ -81,7 +81,7 @@ public actor SessionManager {
                 paneId: paneId,
                 status: session.status.rawValue,
                 cwd: session.cwd,
-                tmux: session.tmuxContext.displayName,
+                tmux: session.tmuxContext.fullContext,
                 registeredAt: Int(session.registeredAt.timeIntervalSince1970),
                 lastActivityAt: Int(session.lastActivityAt.timeIntervalSince1970),
                 lastNotification: session.lastNotification.map {

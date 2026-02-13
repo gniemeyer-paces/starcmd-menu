@@ -37,6 +37,10 @@ public struct TmuxContext: Codable, Equatable {
         "\(session):\(window):\(paneId)"
     }
 
+    public var fullContext: String {
+        "\(session):\(window):\(windowId):\(paneId)"
+    }
+
     public init(session: String, window: String, windowId: String, paneId: String) {
         self.session = session
         self.window = window

@@ -26,6 +26,15 @@ struct MenuBarView: View {
         }
         .padding(.vertical, 8)
         .frame(width: 420)
+        .onAppear {
+            // Dismiss tmux status bar glow when menu opens
+            Task.detached {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/tmux")
+                process.arguments = ["set-environment", "-gu", "STARCMD_GLOW"]
+                try? process.run()
+            }
+        }
     }
 
     // MARK: - Views

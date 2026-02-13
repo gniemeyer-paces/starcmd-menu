@@ -11,6 +11,8 @@ set_stack() { $TMX set-environment -g "STARCMD_$1" "$2"; }
 
 case "$ACTION" in
   pick)
+    # Dismiss glow notification
+    $TMX set-environment -gu STARCMD_GLOW 2>/dev/null
     # fzf session picker — meant to run inside display-popup
     LINES=$(echo '{"type":"list","timestamp":0}' | nc -U "$SOCK" 2>/dev/null | jq -r '
       sort_by(-.lastActivityAt) | .[] |
