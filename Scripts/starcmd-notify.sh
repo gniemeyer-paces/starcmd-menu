@@ -52,9 +52,11 @@ echo "{\"ts\":\"$(date -Iseconds)\",\"hook\":\"notify\",\"session_id\":\"$SESSIO
 
 echo "$OUTPUT" | nc -U /tmp/starcmd.sock 2>/dev/null
 
-# Flash tmux status bar on notification
+# Flash tmux status bar on notification (only for non-active panes)
 if [ -n "$TMUX" ]; then
   TMX=/opt/homebrew/bin/tmux
+  ACTIVE_PANE=$($TMX display-message -p '#{pane_id}' 2>/dev/null)
+  [ "$TMUX_PANE_ID" = "$ACTIVE_PANE" ] && exit 0
   case "$NOTIFICATION_TYPE" in
     tool_error|blocked_on_user_permission)
       FLASH_BG="red" ;;
