@@ -55,10 +55,12 @@ echo "$OUTPUT" | nc -U /tmp/starcmd.sock 2>/dev/null
 # Flash tmux status bar on notification (only for non-active panes)
 if [ -n "$TMUX" ]; then
   TMX=/opt/homebrew/bin/tmux
+  # Extract notifying pane from tmux context (session:window:windowId:paneId)
+  NOTIFY_PANE=$(echo "$TMUX_CONTEXT" | awk -F: '{print $NF}')
   ACTIVE_PANE=$($TMX display-message -p '#{pane_id}' 2>/dev/null)
-  [ "$TMUX_PANE_ID" = "$ACTIVE_PANE" ] && exit 0
+  [ "$NOTIFY_PANE" = "$ACTIVE_PANE" ] && exit 0
   case "$NOTIFICATION_TYPE" in
-    tool_error|blocked_on_user_permission)
+    tool_error|permission_prompt|elicitation_dialog)
       FLASH_BG="red" ;;
     *)
       FLASH_BG="colour208" ;;  # orange
@@ -76,6 +78,14 @@ if [ -n "$TMUX" ]; then
       while true; do
         GLOW=$($TMX show-environment -g STARCMD_GLOW 2>/dev/null | cut -d= -f2)
         [ -z "$GLOW" ] && break
+        # Auto-dismiss red glow when no sessions are blocked
+        if [ "$GLOW" = "red" ]; then
+          BLOCKED=$(echo '{"type":"list","timestamp":0}' | nc -U /tmp/starcmd.sock 2>/dev/null | jq '[.[] | select(.status=="blocked")] | length' 2>/dev/null)
+          if [ "${BLOCKED:-0}" -eq 0 ]; then
+            $TMX set-environment -gu STARCMD_GLOW 2>/dev/null
+            break
+          fi
+        fi
         for c in colour64 colour100 colour136 colour172 "$GLOW"; do
           $TMX set-option -g status-style "bg=$c,fg=black" 2>/dev/null
           sleep 0.08
