@@ -75,6 +75,7 @@ if [ -n "$TMUX" ]; then
   if [ -z "$GLOW_PID" ] || ! kill -0 "$GLOW_PID" 2>/dev/null; then
     (
       ORIG_STYLE=$($TMX show-options -gv status-style 2>/dev/null)
+      START_TIME=$(date +%s)
       while true; do
         GLOW=$($TMX show-environment -g STARCMD_GLOW 2>/dev/null | cut -d= -f2)
         [ -z "$GLOW" ] && break
@@ -82,6 +83,13 @@ if [ -n "$TMUX" ]; then
         if [ "$GLOW" = "red" ]; then
           BLOCKED=$(echo '{"type":"list","timestamp":0}' | nc -U /tmp/starcmd.sock 2>/dev/null | jq '[.[] | select(.status=="blocked")] | length' 2>/dev/null)
           if [ "${BLOCKED:-0}" -eq 0 ]; then
+            $TMX set-environment -gu STARCMD_GLOW 2>/dev/null
+            break
+          fi
+        else
+          # Idle (orange) glow times out after 20 seconds
+          ELAPSED=$(( $(date +%s) - START_TIME ))
+          if [ "$ELAPSED" -ge 20 ]; then
             $TMX set-environment -gu STARCMD_GLOW 2>/dev/null
             break
           fi

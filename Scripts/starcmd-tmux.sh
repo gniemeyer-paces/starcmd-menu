@@ -9,12 +9,32 @@ ACTION="${1:-show}"
 get_stack() { $TMX show-environment -g "STARCMD_$1" 2>/dev/null | cut -d= -f2; }
 set_stack() { $TMX set-environment -g "STARCMD_$1" "$2"; }
 
+# Reliable socket query — nc is flaky with Unix sockets on macOS
+sock_query() {
+  python3 -c "
+import socket,sys
+s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
+try:
+  s.connect('$SOCK')
+  s.sendall(b'{\"type\":\"list\",\"timestamp\":0}')
+  s.shutdown(socket.SHUT_WR)
+  d=b''
+  while True:
+    c=s.recv(65536)
+    if not c: break
+    d+=c
+  sys.stdout.buffer.write(d)
+except: pass
+finally: s.close()
+" 2>/dev/null
+}
+
 case "$ACTION" in
   pick)
     # Dismiss glow notification
     $TMX set-environment -gu STARCMD_GLOW 2>/dev/null
     # fzf session picker — meant to run inside display-popup
-    LINES=$(echo '{"type":"list","timestamp":0}' | nc -U "$SOCK" 2>/dev/null | jq -r '
+    LINES=$(sock_query | jq -r '
       sort_by(-.lastActivityAt) | .[] |
       (if .status == "blocked" then "⚠ BLOCKED"
        elif .status == "idle" then "⏸ IDLE   "
@@ -68,7 +88,7 @@ case "$ACTION" in
 
   status)
     # Status bar segment — outputs tmux format strings with color
-    RESPONSE=$(echo '{"type":"list","timestamp":0}' | nc -U "$SOCK" 2>/dev/null | jq '.' 2>/dev/null)
+    RESPONSE=$(sock_query | jq '.' 2>/dev/null)
     [ -z "$RESPONSE" ] && exit 0
 
     BLOCKED=$(echo "$RESPONSE" | jq '[.[] | select(.status=="blocked")] | length')

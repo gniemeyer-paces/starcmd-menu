@@ -151,8 +151,14 @@ public actor SocketServer {
                 break
             }
 
-            // Handle client (may need async for response)
-            await handleClient(socket: clientSocket, parser: parser, messageHandler: messageHandler)
+            // Set client socket to blocking mode (it inherits O_NONBLOCK from server socket)
+            let clientFlags = fcntl(clientSocket, F_GETFL)
+            _ = fcntl(clientSocket, F_SETFL, clientFlags & ~O_NONBLOCK)
+
+            // Handle client concurrently so accept loop isn't blocked
+            Task {
+                await handleClient(socket: clientSocket, parser: parser, messageHandler: messageHandler)
+            }
         }
     }
 
@@ -172,6 +178,10 @@ public actor SocketServer {
                 break
             }
             data.append(contentsOf: buffer[0..<bytesRead])
+            // Try to parse early — don't wait for EOF if we have a complete JSON message
+            if data.last == UInt8(ascii: "}") || data.last == UInt8(ascii: "\n") {
+                break
+            }
         }
 
         guard !data.isEmpty else { return }
@@ -182,10 +192,11 @@ public actor SocketServer {
 
             // If handler returned response data, write it back before closing
             if let responseData {
+                var totalWritten = 0
+                let count = responseData.count
                 responseData.withUnsafeBytes { bytes in
-                    var totalWritten = 0
-                    while totalWritten < bytes.count {
-                        let written = write(clientSocket, bytes.baseAddress! + totalWritten, bytes.count - totalWritten)
+                    while totalWritten < count {
+                        let written = Darwin.write(clientSocket, bytes.baseAddress! + totalWritten, count - totalWritten)
                         if written <= 0 { break }
                         totalWritten += written
                     }
